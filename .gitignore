@@ -5,3 +5,8 @@ venv/
 models-steam-fp16/
 
 __pycache__/
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
