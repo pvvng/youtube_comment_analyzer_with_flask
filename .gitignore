@@ -1,0 +1,7 @@
+# venv
+venv/
+
+# models
+models-steam-fp16/
+
+__pycache__/
