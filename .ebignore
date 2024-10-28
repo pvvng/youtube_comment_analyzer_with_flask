@@ -1,7 +1,6 @@
 venv/
 .gitignore
 __pycache__/
-
-# 특정 파일 제외
 app/utils/my_functions/get_onnx_model.py
 app/utils/my_functions/get_sentiment.py
+.git/
