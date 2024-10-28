@@ -2,7 +2,7 @@
 venv/
 
 # models
-models-steam-fp16/
+# models-steam-fp16/
 
 __pycache__/
 
