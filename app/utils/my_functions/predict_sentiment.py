@@ -1,18 +1,8 @@
-import onnxruntime as ort
-import numpy as np
-from transformers import AutoTokenizer
+
 from scipy.special import softmax
 
-# 변환된 ONNX 모델 로드
-ort_session = ort.InferenceSession("app/models/kcbert_model.onnx")
-
-model_path = "app/models/models-steam-fp16"
-
-# 토크나이저만 가져오고, PyTorch 없이 추론
-tokenizer = AutoTokenizer.from_pretrained(model_path)
-
 # 예측 함수 정의
-def predict(text):
+def predict_sentiment(text, tokenizer, ort_session):
     # 토크나이저를 사용해 ONNX Runtime에 맞는 입력 생성
     inputs = tokenizer(text, return_tensors="np")["input_ids"]
     ort_inputs = {"input_ids": inputs}
@@ -31,7 +21,3 @@ def predict(text):
         return "positive"
     else:
         return "negative"
-
-
-# 예제 테스트
-print(predict("ㅋㅋㅋㅋㅋ아 이번 영상 개웃기다"))

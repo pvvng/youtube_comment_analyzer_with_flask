@@ -1,5 +1,5 @@
 # 감정 분석 함수 호출
-from app.utils.my_functions.get_sentiment import get_sentiment
+from app.utils.my_functions.predict_sentiment import predict_sentiment
 # 키워드 배열 반환함수 호출
 from app.utils.my_functions.get_keyword import get_keyword
 # 키워드 데이터 데이터 형식에 맞게 변형하는 함수 호출
@@ -9,7 +9,7 @@ from app.utils.my_functions.stopword import stopword
 # log 사용
 import math
 
-def process_received_data(parsed_data, v4_tokenizer, v4_model, okt, F):
+def process_received_data(parsed_data, tokenizer, ort_session, okt):
 
     # 반환할 js 객체 형태의 딕셔너리
     keyword_dict = {}
@@ -46,7 +46,7 @@ def process_received_data(parsed_data, v4_tokenizer, v4_model, okt, F):
                     keyword_dict[normalized_keyword] = like_to_add
         
         # 감정 분석
-        sentiment_result = get_sentiment(text, v4_tokenizer, v4_model, F)
+        sentiment_result = predict_sentiment(text, tokenizer, ort_session)
         # 분석 결과 더하기 
         sentiment_dict[sentiment_result] += like_to_add
 
