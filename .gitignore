@@ -3,7 +3,7 @@ venv/
 
 # models
 app/models/models-steam-fp16/*
-app/models/kcbert_model.onnx
+# app/models/kcbert_model.onnx
 
 __pycache__/
 

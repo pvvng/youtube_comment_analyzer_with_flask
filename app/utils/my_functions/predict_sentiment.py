@@ -3,7 +3,7 @@ from scipy.special import softmax
 # 예측 함수 정의
 def predict_sentiment(text, tokenizer, ort_session):
     # 토크나이저를 사용해 ONNX Runtime에 맞는 입력 생성
-    inputs = tokenizer(text, return_tensors="np")["input_ids"]
+    inputs = tokenizer(text, return_tensors="np", max_length=6, padding="max_length", truncation=True)["input_ids"]
     ort_inputs = {"input_ids": inputs}
     
     # ONNX Runtime을 사용하여 추론 수행

@@ -9,7 +9,7 @@
 # v4_model = AutoModelForSequenceClassification.from_pretrained(model_path)
 
 # # 예제 입력 설정
-# dummy_input = v4_tokenizer("예시 문장", return_tensors="pt")["input_ids"]
+# dummy_input = v4_tokenizer("예시 문장", return_tensors="pt", max_length=6, padding="max_length", truncation=True)["input_ids"]
 
 # # ONNX 변환
 # torch.onnx.export(
