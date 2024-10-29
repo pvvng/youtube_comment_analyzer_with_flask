@@ -1,4 +1,3 @@
-
 from scipy.special import softmax
 
 # 예측 함수 정의

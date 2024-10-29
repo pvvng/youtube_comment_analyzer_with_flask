@@ -2,7 +2,7 @@
 # from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 # # 로컬 모델 경로 지정
-# model_path = "./models-steam-fp16"
+# model_path = "./models-steam2"
 
 # # 토크나이저와 모델 로드
 # v4_tokenizer = AutoTokenizer.from_pretrained(model_path)
