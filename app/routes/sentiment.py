@@ -18,22 +18,33 @@ import onnxruntime as ort
 # import numpy as np
 from transformers import AutoTokenizer
 
+# api key 검증
+from functools import wraps
 import os
 
-# 로컬 모드 설정
-IS_LOCAL = os.getenv("FLASK_ENV") == "development"
+# 로깅 설정
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# API Key 목록
+# 블루프린트 정의
+sentiment_bp = Blueprint('sentiment', __name__)
+
+# api key 확인
 VALID_API_KEYS = [
-    os.getenv("API_KEY_ADMIN", "default_key_1"),
-    os.getenv("API_KEY_SUB", "default_key_2"),
+    os.getenv("API_KEY_ADMIN", None),
+    os.getenv("API_KEY_SUB", None),
 ]
 
-if IS_LOCAL:
-    VALID_API_KEYS.append("local_dev_key")
-
-# 로깅 설정
-logger = logging.getLogger(__name__)
+def require_api_key(f):
+    """API Key 검증 데코레이터"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        api_key = request.headers.get("X-API-KEY")  # 요청 헤더에서 API Key 가져오기
+        if not api_key or api_key not in VALID_API_KEYS:
+            logger.warning(f"Unauthorized request with API Key: {api_key}")
+            return jsonify({"error": "Unauthorized. Invalid or missing API Key."}), 401
+        return f(*args, **kwargs)
+    return decorated_function
 
 # ONNX 모델 및 형태소 분석기 초기화
 okt = Okt()
@@ -41,10 +52,11 @@ ort_session = ort.InferenceSession("app/models/kcbert_model.onnx")
 model_path = "app/models/models-steam-fp16"
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 
-# 블루프린트 정의
-sentiment_bp = Blueprint('sentiment', __name__)
+# 허용된 Origin 목록
+ALLOWED_ORIGINS = ["http://localhost:3000", "http://localhost:3001", "https://youtuview.netlify.app"]
 
-ALLOWED_ORIGINS = ["http://localhost:3000", "http://localhost:3001", ]
+# CORS 설정: 허용된 Origin만 허용
+CORS(sentiment_bp, origins=ALLOWED_ORIGINS)
 
 # 공통 에러 핸들러
 @sentiment_bp.app_errorhandler(413)
@@ -59,12 +71,6 @@ def bad_request(e):
 def internal_server_error(e):
     return jsonify({"error": "Internal server error", "details": str(e)}), 500
 
-# 허용된 Origin 목록
-ALLOWED_ORIGINS = ["http://localhost:3000", "http://localhost:3001", "https://youtuview.netlify.app"]
-
-# CORS 설정: 허용된 Origin만 허용
-CORS(sentiment_bp, origins=ALLOWED_ORIGINS)
-
 # API 요청 전 도메인 제한
 @sentiment_bp.before_request
 def restrict_origin():
@@ -74,6 +80,7 @@ def restrict_origin():
     
 # POST 요청을 처리할 API 엔드포인트
 @sentiment_bp.route('/analyze', methods=['POST'])
+@require_api_key
 def receive_data():
     try:
         # 받은 파일 댓글 데이터 변환
