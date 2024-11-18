@@ -8,8 +8,8 @@ def create_app():
     # 모든 도메인에서의 요청 허용
     CORS(app)
 
-    # 최대 요청 본문 크기 설정 (예: 10MB)
-    app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB
+    # 최대 요청 본문 크기 설정 (5MB)
+    app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB
 
     # 블루프린트 등록
     from app.routes.sentiment import sentiment_bp 

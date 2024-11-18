@@ -1,6 +1,13 @@
 # flask
 from flask import request, jsonify, Blueprint
+from flask_cors import CORS
+
+# logger
+import logging
+
+# json
 import json
+from json.decoder import JSONDecodeError
 
 # 데이터 처리 함수
 from app.utils.my_functions.process_received_data import process_received_data
@@ -10,47 +17,94 @@ from konlpy.tag import Okt
 import onnxruntime as ort
 # import numpy as np
 from transformers import AutoTokenizer
-# 시간 재기
-import time
+
+import os
+
+# 로컬 모드 설정
+IS_LOCAL = os.getenv("FLASK_ENV") == "development"
+
+# API Key 목록
+VALID_API_KEYS = [
+    os.getenv("API_KEY_ADMIN", "default_key_1"),
+    os.getenv("API_KEY_SUB", "default_key_2"),
+]
+
+if IS_LOCAL:
+    VALID_API_KEYS.append("local_dev_key")
+
+# 로깅 설정
+logger = logging.getLogger(__name__)
+
+# ONNX 모델 및 형태소 분석기 초기화
+okt = Okt()
+ort_session = ort.InferenceSession("app/models/kcbert_model.onnx")
+model_path = "app/models/models-steam-fp16"
+tokenizer = AutoTokenizer.from_pretrained(model_path)
 
 # 블루프린트 정의
 sentiment_bp = Blueprint('sentiment', __name__)
 
-# okt 객체 생성
-okt = Okt()
+ALLOWED_ORIGINS = ["http://localhost:3000", "http://localhost:3001", ]
 
-# 변환된 ONNX 모델 로드
-ort_session = ort.InferenceSession("app/models/kcbert_model.onnx")
-model_path = "app/models/models-steam-fp16"
+# 공통 에러 핸들러
+@sentiment_bp.app_errorhandler(413)
+def request_entity_too_large(e):
+    return jsonify({"error": "Payload too large"}), 413
 
-# 토크나이저만 가져오고, PyTorch 없이 추론
-tokenizer = AutoTokenizer.from_pretrained(model_path)
+@sentiment_bp.app_errorhandler(400)
+def bad_request(e):
+    return jsonify({"error": "Bad request", "details": str(e)}), 400
 
+@sentiment_bp.app_errorhandler(500)
+def internal_server_error(e):
+    return jsonify({"error": "Internal server error", "details": str(e)}), 500
+
+# 허용된 Origin 목록
+ALLOWED_ORIGINS = ["http://localhost:3000", "http://localhost:3001", "https://youtuview.netlify.app"]
+
+# CORS 설정: 허용된 Origin만 허용
+CORS(sentiment_bp, origins=ALLOWED_ORIGINS)
+
+# API 요청 전 도메인 제한
+@sentiment_bp.before_request
+def restrict_origin():
+    origin = request.headers.get("Origin")
+    if origin and origin not in ALLOWED_ORIGINS:
+        return jsonify({"error": f"Origin {origin} is not allowed"}), 403
+    
 # POST 요청을 처리할 API 엔드포인트
-@sentiment_bp.route('/receive_data', methods=['POST'])
+@sentiment_bp.route('/analyze', methods=['POST'])
 def receive_data():
     try:
         # 받은 파일 댓글 데이터 변환
         file = request.files['file']
+        if not file:
+            logger.warning("No file provided in the request")
+            return jsonify({"error": "No file provided"}), 400
+
+        # MIME 타입 확인
+        if file.mimetype != 'text/plain':
+            logger.warning(f"Invalid file type: {file.mimetype}")
+            return jsonify({"error": f"Invalid file type: {file.mimetype}. Only 'text/plain' is allowed."}), 400
+
+        if not file.filename.endswith('.txt'):
+            logger.warning("Invalid file extension")
+            return jsonify({"error": "Invalid file extension. Only '.txt' files are allowed."}), 400
+
         data = file.read().decode('utf-8')
+        logger.info("File read successfully")
         
-        # 받은 데이터 딕셔너리로 변환
-        parsed_data = json.loads(data)
-
-        # 시작시간  
-        start_time = time.time()
-        print("Data received and parsed successfully")  # 디버깅 출력
-
-        # log 출력
-        print("pending...")
+        # JSON 데이터 변환
+        try:
+            parsed_data = json.loads(data)
+            logger.info("JSON parsed successfully")
+        except JSONDecodeError as e:
+            logger.warning(f"Invalid JSON format: {str(e)}")
+            return jsonify({"error": "Invalid JSON format"}), 400
 
         # 반환할 데이터 가공하기
         [return_keyword, sentiment_dict] = process_received_data(parsed_data, tokenizer, ort_session, okt)
-        
-        end_time = time.time()
-        ex_time = end_time - start_time
-        # 소요시간 출력
-        print(f"소요시간 :{ex_time}")
+        logger.info("Data processed successfully")
 
         # 성공 응답 반환
         return jsonify({
@@ -59,5 +113,7 @@ def receive_data():
         }), 200
     
     except Exception as e:
-        print("Error:", str(e))  # 에러 메시지 출력
-        return jsonify({"error": str(e)}), 500
+        # 상세한 서버 오류 로그 출력
+        logger.error("Unexpected error occurred", exc_info=True)
+        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+
