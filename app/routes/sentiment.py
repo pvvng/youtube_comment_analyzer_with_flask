@@ -39,7 +39,7 @@ def require_api_key(f):
     """API Key 검증 데코레이터"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        api_key = request.headers.get("X-API-KEY")  # 요청 헤더에서 API Key 가져오기
+        api_key = request.headers.get("YOUTUVIEW-API-KEY")  # 요청 헤더에서 API Key 가져오기
         if not api_key or api_key not in VALID_API_KEYS:
             logger.warning(f"Unauthorized request with API Key: {api_key}")
             return jsonify({"error": "Unauthorized. Invalid or missing API Key."}), 401
